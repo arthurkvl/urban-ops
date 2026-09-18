@@ -749,8 +749,11 @@ socket.on('tracer', ({ fromX, fromZ, toX, toZ }) => {
 });
 
 let roundEndHideTimeout = null;
+let showingRoundEnd = false;
 socket.on('round_end', ({ reason, winnerName, winnerBonus, standings }) => {
   const iWon = reason === 'last_standing' && winnerName === myName;
+  showingRoundEnd = true;
+  lobbyScreenEl.classList.add('hidden');
   roundEndOverlayEl.classList.remove('victory', 'defeat');
   roundEndOverlayEl.classList.add(iWon ? 'victory' : 'defeat');
   roundEndTitleEl.textContent = iWon ? 'VICTORY' : reason === 'last_standing' ? 'ELIMINATED' : 'ROUND OVER';
@@ -768,6 +771,7 @@ socket.on('round_end', ({ reason, winnerName, winnerBonus, standings }) => {
 });
 
 function hideRoundEnd() {
+  showingRoundEnd = false;
   roundEndOverlayEl.classList.add('hidden');
   if (joined) requestLock();
 }
@@ -796,6 +800,8 @@ socket.on('state', (state) => {
   }
 
   const me = state.players.find((p) => p.id === myId);
+
+  if (showingRoundEnd) return;
 
   if (joined && state.phase === 'lobby') {
     wasLobby = true;

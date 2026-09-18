@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>URBAN OPS</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="startScreen">
+    <div class="start-box">
+      <h1>URBAN<span>OPS</span></h1>
+      <p class="sub">Tactical FPS — fictional desert town · virtual currency, no real-money stakes.</p>
+      <ol class="objective">
+        <li>Eliminate enemy operatives to earn <b>+$3</b></li>
+        <li>Each death costs you <b>-$4</b> — once dead, you're out for the rest of the round</li>
+        <li>Last one standing or highest balance at round's end wins the round</li>
+      </ol>
+      <label>CALLSIGN
+        <input id="nameInput" type="text" maxlength="18" placeholder="YOUR CALLSIGN" />
+      </label>
+      <button id="deployBtn">ENTER THE ZONE</button>
+      <div class="controls-hint">
+        <b>Arrow keys</b> or <b>WASD</b> move · <b>Mouse</b> aim · <b>Left click</b> shoot<br/>
+        <b>R</b> reload · <b>TAB</b> scoreboard · <b>ESC</b> release mouse
+      </div>
+    </div>
+  </div>
+
+  <div id="lobbyScreen" class="hidden">
+    <div class="start-box">
+      <h1>URBAN<span>OPS</span></h1>
+      <p class="sub" id="lobbyStatus">Waiting for players...</p>
+      <div id="lobbyCount">0 / 10</div>
+      <div id="lobbyTimer"></div>
+      <div id="lobbyList"></div>
+      <p class="sub">The round starts once the zone is full, or after the time shown (remaining slots are filled with bots).</p>
+    </div>
+  </div>
+
+  <div id="hud" class="hidden">
+    <canvas id="scene"></canvas>
+    <div id="crosshair">+</div>
+    <div id="hitmarker"></div>
+
+    <div id="topLeft">
+      <div class="hud-line">$<span id="credits">0</span></div>
+      <div class="hud-line small"><span id="kills">0</span> K · <span id="deaths">0</span> D</div>
+    </div>
+    <div id="topRight">
+      <div class="hud-line" id="timerLine">--:--</div>
+    </div>
+    <div id="ammoLine">30 / 30</div>
+    <div id="healthBarWrap"><div id="healthBar"></div></div>
+
+    <div id="killFeed"></div>
+    <div id="floatFeedback"></div>
+
+    <canvas id="minimap" width="150" height="150"></canvas>
+
+    <div id="damageVignette"></div>
+
+    <div id="watchingBanner" class="hidden"></div>
+
+    <div id="deathOverlay" class="hidden">
+      <div id="deathTitle">ELIMINATED</div>
+      <div id="deathAmount">-$4</div>
+      <div id="respawnTimer"></div>
+    </div>
+
+    <div id="scoreboard" class="panel hidden">
+      <h3>SCOREBOARD</h3>
+      <div id="sbList"></div>
+    </div>
+
+    <div id="tutorial">
+      <svg id="tutorialKeys" viewBox="0 0 220 90" xmlns="http://www.w3.org/2000/svg">
+        <rect x="30" y="2" width="30" height="26" rx="4" class="key" />
+        <text x="45" y="19" class="key-label">▲</text>
+        <rect x="2" y="30" width="30" height="26" rx="4" class="key" />
+        <text x="17" y="47" class="key-label">◀</text>
+        <rect x="30" y="30" width="30" height="26" rx="4" class="key" />
+        <text x="45" y="47" class="key-label">▼</text>
+        <rect x="58" y="30" width="30" height="26" rx="4" class="key" />
+        <text x="73" y="47" class="key-label">▶</text>
+        <text x="30" y="70" class="key-caption">move</text>
+
+        <rect x="100" y="2" width="34" height="26" rx="4" class="key" />
+        <text x="117" y="19" class="key-label">R</text>
+        <text x="117" y="40" class="key-caption">reload</text>
+
+        <rect x="100" y="46" width="34" height="26" rx="4" class="key" />
+        <text x="117" y="63" class="key-label">⎵</text>
+        <text x="117" y="84" class="key-caption">jump</text>
+
+        <circle cx="180" cy="20" r="16" class="mouse" />
+        <line x1="180" y1="8" x2="180" y2="20" class="mouse-line" />
+        <text x="180" y="42" class="key-caption">aim</text>
+
+        <circle cx="180" cy="60" r="16" class="mouse" />
+        <rect x="173" y="47" width="14" height="13" rx="3" class="mouse-btn" />
+        <text x="180" y="82" class="key-caption">shoot</text>
+      </svg>
+    </div>
+  </div>
+
+  <div id="roundEndOverlay" class="hidden">
+    <div id="roundEndTitle">VICTORY</div>
+    <div id="roundEndAmount">+$0</div>
+    <div id="roundEndSub"></div>
+    <div id="roundEndStandings"></div>
+    <button id="continueBtn">CONTINUE</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="game.js"></script>
+</body>
+</html>

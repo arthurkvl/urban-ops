@@ -1,118 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>URBAN OPS</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Urban Ops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0a0a08; color: #e8e0d0; font-family: 'IBM Plex Mono', monospace; }
+  a { color: #d6b64a; text-decoration: none; }
+  a:hover { color: #f0d878; }
+  ::selection { background: #d6b64a; color: #14120a; }
+  @keyframes floatA { 0%,100% { transform: translate(0,0) rotate(var(--r,0deg)); } 50% { transform: translate(var(--dx,18px), var(--dy,-26px)) rotate(calc(var(--r,0deg) + 12deg)); } }
+  @keyframes floatB { 0%,100% { transform: translate(0,0) rotate(var(--r,0deg)); } 50% { transform: translate(var(--dx,-22px), var(--dy,20px)) rotate(calc(var(--r,0deg) - 14deg)); } }
+  @keyframes shimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+  @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .page { width: 100%; min-height: 100vh; position: relative; overflow: hidden; background: radial-gradient(circle at 20% 0%, #1a1810 0%, #0a0a08 55%); }
+  .gunLayer { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+  .gunBadge { position: absolute; }
+  .gunBadge svg { width: 100%; display: block; }
+  .gunAmmo { text-align: center; font-size: 10px; letter-spacing: 1px; color: #d6b64a; opacity: 0.8; margin-top: 2px; }
+  .nav { position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; padding: 24px 48px; max-width: 1280px; margin: 0 auto; flex-wrap: wrap; gap: 12px; }
+  .navLogo { font-family: 'Anton', sans-serif; font-size: 22px; letter-spacing: 2px; color: #f0e8d8; }
+  .navLogo span { color: #d6b64a; }
+  .navLinks { display: flex; gap: 28px; font-size: 13px; letter-spacing: 1px; color: #cbb98a; flex-wrap: wrap; }
+  .btnPrimary { background: #d6b64a; color: #14120a; padding: 10px 22px; font-weight: 700; font-size: 13px; letter-spacing: 1px; border-radius: 3px; display: inline-flex; align-items: center; gap: 6px; }
+  .hero { position: relative; z-index: 5; max-width: 900px; margin: 0 auto; padding: 90px 24px 80px; text-align: center; }
+  .kicker { display: inline-flex; align-items: center; gap: 8px; background: rgba(214,182,74,0.08); border: 1px solid rgba(214,182,74,0.35); border-radius: 20px; padding: 6px 16px; font-size: 12px; letter-spacing: 2px; color: #d6b64a; margin-bottom: 28px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #7fd858; animation: pulseDot 1.6s ease-in-out infinite; }
+  .heroTitle { font-family: 'Anton', sans-serif; font-size: 96px; line-height: 0.95; margin: 0 0 22px; letter-spacing: 1px; background: linear-gradient(100deg, #8a6a1e 0%, #f5dfa0 25%, #d6b64a 50%, #f5dfa0 75%, #8a6a1e 100%); background-size: 260% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 6s linear infinite; filter: drop-shadow(0 4px 24px rgba(214,182,74,0.25)); }
+  .heroSub { font-size: 18px; line-height: 1.6; color: #cbb98a; max-width: 620px; margin: 0 auto 40px; }
+  .playBtn { display: inline-flex; align-items: center; gap: 12px; background: #d6b64a; color: #14120a; padding: 20px 48px; font-weight: 700; font-size: 20px; letter-spacing: 2px; border-radius: 6px; box-shadow: 0 10px 40px rgba(214,182,74,0.4); border: none; cursor: pointer; }
+  .howLink { font-size: 13px; letter-spacing: 1px; color: #9a8a6c; margin-top: 14px; display: block; text-align: center; }
+  .features { position: relative; z-index: 5; max-width: 1100px; margin: 0 auto 100px; padding: 0 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .card { background: rgba(20,18,10,0.7); border: 1px solid #2a2414; border-radius: 8px; padding: 28px 24px; }
+  .card .ico { font-size: 28px; margin-bottom: 12px; }
+  .card .t { font-family: 'Anton', sans-serif; font-size: 18px; letter-spacing: 1px; color: #f0e8d8; margin-bottom: 8px; }
+  .card .b { font-size: 13px; line-height: 1.6; color: #9a8a6c; }
+  .section { position: relative; z-index: 5; max-width: 1000px; margin: 0 auto; padding: 0 24px 100px; }
+  .sectionHead { text-align: center; margin-bottom: 50px; }
+  .sectionKicker { font-size: 12px; letter-spacing: 3px; color: #d6b64a; margin-bottom: 10px; }
+  .sectionTitle { font-family: 'Anton', sans-serif; font-size: 40px; color: #f0e8d8; }
+  .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+  .step { border-left: 2px solid #d6b64a; padding: 4px 0 4px 20px; }
+  .step .n { font-family: 'Anton', sans-serif; font-size: 34px; color: rgba(214,182,74,0.4); margin-bottom: 6px; }
+  .step .t { font-size: 15px; font-weight: 700; letter-spacing: 1px; color: #f0e8d8; margin-bottom: 8px; }
+  .step .b { font-size: 13px; line-height: 1.6; color: #9a8a6c; }
+  .econWrap { position: relative; z-index: 5; background: rgba(20,18,10,0.55); border-top: 1px solid #2a2414; border-bottom: 1px solid #2a2414; padding: 90px 24px; }
+  .econInner { max-width: 1000px; margin: 0 auto; }
+  .econGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .econCard { background: #14120a; border: 1px solid #2a2414; border-radius: 8px; padding: 32px 24px; text-align: center; }
+  .econCard .v { font-family: 'Anton', sans-serif; font-size: 44px; }
+  .econCard .l { font-size: 13px; letter-spacing: 1px; color: #cbb98a; margin-top: 8px; }
+  .potNote { margin-top: 24px; background: linear-gradient(90deg, rgba(214,182,74,0.12), rgba(214,182,74,0.02)); border: 1px solid rgba(214,182,74,0.3); border-radius: 8px; padding: 22px 28px; font-size: 14px; line-height: 1.7; color: #e8e0d0; }
+  .feedBox { background: #14120a; border: 1px solid #2a2414; border-radius: 8px; padding: 24px 28px; font-size: 13px; line-height: 2; }
+  .feedBox div { color: #9a8a6c; }
+  .ctaWrap { position: relative; z-index: 5; text-align: center; padding: 40px 24px 110px; }
+  .ctaTitle { font-family: 'Anton', sans-serif; font-size: 44px; color: #f0e8d8; margin-bottom: 20px; }
+  .ctaNote { margin-top: 16px; font-size: 11px; color: #5a5040; letter-spacing: 0.5px; }
+  .footNote { margin-top: 60px; font-size: 12px; color: #5a5040; letter-spacing: 1px; }
+  @media (max-width: 800px) {
+    .heroTitle { font-size: 56px; }
+    .features, .steps, .econGrid { grid-template-columns: 1fr; }
+    .navLinks { display: none; }
+  }
+</style>
 </head>
 <body>
-  <div id="startScreen">
-    <div class="start-box">
-      <h1>URBAN<span>OPS</span></h1>
-      <p class="sub">Tactical FPS — fictional desert town · virtual currency, no real-money stakes.</p>
-      <ol class="objective">
-        <li>Eliminate enemy operatives to earn <b>+$3</b></li>
-        <li>Each death costs you <b>-$4</b> — once dead, you're out for the rest of the round</li>
-        <li>Last one standing or highest balance at round's end wins the round</li>
-      </ol>
-      <label>CALLSIGN
-        <input id="nameInput" type="text" maxlength="18" placeholder="YOUR CALLSIGN" />
-      </label>
-      <button id="deployBtn">ENTER THE ZONE</button>
-      <div class="controls-hint">
-        <b>Arrow keys</b> or <b>WASD</b> move · <b>Mouse</b> aim · <b>Left click</b> shoot<br/>
-        <b>R</b> reload · <b>TAB</b> scoreboard · <b>ESC</b> release mouse
+<div class="page">
+  <div class="gunLayer" id="gunLayer"></div>
+
+  <div class="nav">
+    <div class="navLogo">URBAN<span>OPS</span></div>
+    <div class="navLinks">
+      <a href="#how">HOW IT WORKS</a>
+      <a href="#economy">ECONOMY</a>
+      <a href="#feed">LIVE FEED</a>
+    </div>
+    <a class="btnPrimary" href="/play"><span style="font-size:11px;">▶</span> PLAY</a>
+  </div>
+
+  <div class="hero">
+    <div class="kicker"><span class="dot"></span> TACTICAL PLAY-TO-EARN</div>
+    <h1 class="heroTitle">URBAN OPS</h1>
+    <p class="heroSub">The tactical FPS where every elimination pays out in <b style="color:#e8e0d0;">$OPS</b>. Stake in, drop in, walk out with the round's pot.</p>
+    <a class="playBtn" href="/play"><span style="font-size:22px;">▶</span> PLAY NOW</a>
+    <a class="howLink" href="#how">HOW IT WORKS ↓</a>
+  </div>
+
+  <div class="features">
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" width="28" height="28"><circle cx="12" cy="12" r="9" fill="none" stroke="#d6b64a" stroke-width="1.4"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="#d6b64a" stroke-width="1.4"/><line x1="12" y1="1" x2="12" y2="5.5" stroke="#d6b64a" stroke-width="1.4"/><line x1="12" y1="18.5" x2="12" y2="23" stroke="#d6b64a" stroke-width="1.4"/><line x1="1" y1="12" x2="5.5" y2="12" stroke="#d6b64a" stroke-width="1.4"/><line x1="18.5" y1="12" x2="23" y2="12" stroke="#d6b64a" stroke-width="1.4"/></svg></div><div class="t">REAL FPS</div><div class="b">First person, aim with the mouse, shoot, reload — a real battlefield, not a clicker.</div></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" width="28" height="28"><circle cx="12" cy="12" r="9.5" fill="none" stroke="#d6b64a" stroke-width="1.4"/><circle cx="12" cy="12" r="6.8" fill="none" stroke="#d6b64a" stroke-width="1" opacity="0.6"/><text x="12" y="16" text-anchor="middle" font-size="10" font-family="Anton, sans-serif" fill="#d6b64a">$</text></svg></div><div class="t">$OPS ECONOMY</div><div class="b">Every elimination, every death, every round moves your balance in real time.</div></div>
+    <div class="card"><div class="ico"><svg viewBox="0 0 24 24" width="28" height="28"><path d="M6 3h12v4a6 6 0 0 1-12 0V3z" fill="none" stroke="#d6b64a" stroke-width="1.4"/><path d="M6 4H3v2a4 4 0 0 0 4 4" fill="none" stroke="#d6b64a" stroke-width="1.2"/><path d="M18 4h3v2a4 4 0 0 1-4 4" fill="none" stroke="#d6b64a" stroke-width="1.2"/><line x1="12" y1="13" x2="12" y2="18" stroke="#d6b64a" stroke-width="1.4"/><line x1="7" y1="21" x2="17" y2="21" stroke="#d6b64a" stroke-width="1.4"/><line x1="12" y1="18" x2="12" y2="21" stroke="#d6b64a" stroke-width="1.4"/></svg></div><div class="t">SEASONS</div><div class="b">Rounds run back to back. Leaderboard, round pot, and a clean return to the lobby between matches.</div></div>
+  </div>
+
+  <div class="section" id="how">
+    <div class="sectionHead">
+      <div class="sectionKicker">THE LOOP</div>
+      <div class="sectionTitle">FOUR STEPS. ONE ROUND.</div>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div class="t">STAKE</div><div class="b">Stake 20 $OPS to enter the zone and go solvent.</div></div>
+      <div class="step"><div class="n">02</div><div class="t">FIGHT</div><div class="b">Every elimination pays +5 $OPS. Every death costs -6.</div></div>
+      <div class="step"><div class="n">03</div><div class="t">SURVIVE</div><div class="b">Hold the line. Last one standing or highest balance when the bell rings.</div></div>
+      <div class="step"><div class="n">04</div><div class="t">POT</div><div class="b">The round's winner takes the vault.</div></div>
+    </div>
+  </div>
+
+  <div class="econWrap" id="economy">
+    <div class="econInner">
+      <div class="sectionHead">
+        <div class="sectionKicker">THE $OPS ECONOMY</div>
+        <div class="sectionTitle">EVERY FRAG HAS A PRICE.</div>
       </div>
+      <div class="econGrid">
+        <div class="econCard"><div class="v" style="color:#7fd858;">+5</div><div class="l">$OPS PER ELIMINATION</div></div>
+        <div class="econCard"><div class="v" style="color:#e2482f;">−6</div><div class="l">$OPS ON EVERY DEATH</div></div>
+        <div class="econCard"><div class="v" style="color:#d6b64a;">20</div><div class="l">$OPS STAKE TO ENTER</div></div>
+      </div>
+      <div class="potNote">The round's vault builds up as the fight goes on. At the bell — last survivor or highest balance — the pot goes to whoever holds the zone.</div>
     </div>
   </div>
 
-  <div id="lobbyScreen" class="hidden">
-    <div class="start-box">
-      <h1>URBAN<span>OPS</span></h1>
-      <p class="sub" id="lobbyStatus">Waiting for players...</p>
-      <div id="lobbyCount">0 / 10</div>
-      <div id="lobbyTimer"></div>
-      <div id="lobbyList"></div>
-      <p class="sub">The round starts once the zone is full, or after the time shown (remaining slots are filled with bots).</p>
+  <div class="section" id="feed">
+    <div class="sectionHead">
+      <div class="sectionKicker">PREVIEW</div>
+      <div class="sectionTitle">THE COMBAT FEED</div>
     </div>
+    <div class="feedBox" id="feedBox"></div>
   </div>
 
-  <div id="hud" class="hidden">
-    <canvas id="scene"></canvas>
-    <div id="crosshair">+</div>
-    <div id="hitmarker"></div>
+  <div class="ctaWrap">
+    <div class="ctaTitle">READY TO DROP IN?</div>
+    <a class="playBtn" href="/play"><span style="font-size:18px;">▶</span> PLAY NOW</a>
+    <div class="ctaNote">Same server, same round — the landing page and the game live together.</div>
+    <div class="footNote">© URBAN OPS — fictional desert town, original project.</div>
+  </div>
+</div>
 
-    <div id="topLeft">
-      <div class="hud-line">$<span id="credits">0</span></div>
-      <div class="hud-line small"><span id="kills">0</span> K · <span id="deaths">0</span> D</div>
-    </div>
-    <div id="topRight">
-      <div class="hud-line" id="timerLine">--:--</div>
-    </div>
-    <div id="ammoLine">30 / 30</div>
-    <div id="healthBarWrap"><div id="healthBar"></div></div>
+<script>
+  const gunSpecs = [
+    { top: '8%', left: '4%', size: 90, anim: 'floatA', dur: '9s', delay: '0s', dx: '16px', dy: '-22px', rot: '-18deg', opacity: 0.5 },
+    { top: '14%', left: '86%', size: 70, anim: 'floatB', dur: '11s', delay: '1.2s', dx: '-20px', dy: '18px', rot: '22deg', opacity: 0.4 },
+    { top: '32%', left: '10%', size: 54, anim: 'floatB', dur: '13s', delay: '0.4s', dx: '14px', dy: '20px', rot: '10deg', opacity: 0.3 },
+    { top: '4%', left: '48%', size: 64, anim: 'floatA', dur: '10s', delay: '2s', dx: '-18px', dy: '-16px', rot: '-8deg', opacity: 0.35 },
+    { top: '46%', left: '90%', size: 80, anim: 'floatA', dur: '8.5s', delay: '0.8s', dx: '20px', dy: '-18px', rot: '30deg', opacity: 0.45 },
+    { top: '58%', left: '3%', size: 68, anim: 'floatB', dur: '12s', delay: '1.6s', dx: '-16px', dy: '22px', rot: '-24deg', opacity: 0.35 },
+    { top: '70%', left: '80%', size: 58, anim: 'floatA', dur: '9.5s', delay: '2.4s', dx: '18px', dy: '-14px', rot: '14deg', opacity: 0.3 },
+    { top: '82%', left: '18%', size: 76, anim: 'floatB', dur: '10.5s', delay: '0.2s', dx: '-14px', dy: '18px', rot: '-30deg', opacity: 0.4 },
+    { top: '90%', left: '55%', size: 60, anim: 'floatA', dur: '11.5s', delay: '1.4s', dx: '16px', dy: '-20px', rot: '6deg', opacity: 0.3 },
+    { top: '20%', left: '68%', size: 48, anim: 'floatB', dur: '9s', delay: '2.8s', dx: '-12px', dy: '16px', rot: '-12deg', opacity: 0.25 },
+  ];
 
-    <div id="killFeed"></div>
-    <div id="floatFeedback"></div>
-
-    <canvas id="minimap" width="150" height="150"></canvas>
-
-    <div id="damageVignette"></div>
-
-    <div id="watchingBanner" class="hidden"></div>
-
-    <div id="deathOverlay" class="hidden">
-      <div id="deathTitle">ELIMINATED</div>
-      <div id="deathAmount">-$4</div>
-      <div id="respawnTimer"></div>
-    </div>
-
-    <div id="roundEndOverlay" class="hidden">
-      <div id="roundEndTitle">VICTORY</div>
-      <div id="roundEndAmount">+$0</div>
-      <div id="roundEndSub"></div>
-      <div id="roundEndStandings"></div>
-      <button id="continueBtn">CONTINUE</button>
-    </div>
-
-    <div id="scoreboard" class="panel hidden">
-      <h3>SCOREBOARD</h3>
-      <div id="sbList"></div>
-    </div>
-
-    <div id="tutorial">
-      <svg id="tutorialKeys" viewBox="0 0 220 90" xmlns="http://www.w3.org/2000/svg">
-        <rect x="30" y="2" width="30" height="26" rx="4" class="key" />
-        <text x="45" y="19" class="key-label">▲</text>
-        <rect x="2" y="30" width="30" height="26" rx="4" class="key" />
-        <text x="17" y="47" class="key-label">◀</text>
-        <rect x="30" y="30" width="30" height="26" rx="4" class="key" />
-        <text x="45" y="47" class="key-label">▼</text>
-        <rect x="58" y="30" width="30" height="26" rx="4" class="key" />
-        <text x="73" y="47" class="key-label">▶</text>
-        <text x="30" y="70" class="key-caption">move</text>
-
-        <rect x="100" y="2" width="34" height="26" rx="4" class="key" />
-        <text x="117" y="19" class="key-label">R</text>
-        <text x="117" y="40" class="key-caption">reload</text>
-
-        <rect x="100" y="46" width="34" height="26" rx="4" class="key" />
-        <text x="117" y="63" class="key-label">⎵</text>
-        <text x="117" y="84" class="key-caption">jump</text>
-
-        <circle cx="180" cy="20" r="16" class="mouse" />
-        <line x1="180" y1="8" x2="180" y2="20" class="mouse-line" />
-        <text x="180" y="42" class="key-caption">aim</text>
-
-        <circle cx="180" cy="60" r="16" class="mouse" />
-        <rect x="173" y="47" width="14" height="13" rx="3" class="mouse-btn" />
-        <text x="180" y="82" class="key-caption">shoot</text>
+  const gunLayer = document.getElementById('gunLayer');
+  gunSpecs.forEach((g, i) => {
+    const el = document.createElement('div');
+    el.className = 'gunBadge';
+    el.style.top = g.top;
+    el.style.left = g.left;
+    el.style.width = g.size + 'px';
+    el.style.animation = `${g.anim} ${g.dur} ease-in-out infinite`;
+    el.style.animationDelay = g.delay;
+    el.style.setProperty('--dx', g.dx);
+    el.style.setProperty('--dy', g.dy);
+    el.style.setProperty('--r', g.rot);
+    el.style.opacity = g.opacity;
+    el.innerHTML = `
+      <svg viewBox="0 0 64 40">
+        <defs>
+          <linearGradient id="gg${i}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f5dfa0" />
+            <stop offset="45%" stop-color="#d6b64a" />
+            <stop offset="100%" stop-color="#8a6a1e" />
+          </linearGradient>
+        </defs>
+        <path d="M4 26 L4 34 Q4 37 7 37 L16 37 Q18 37 18 34 L18 30 L30 30 L30 22 L54 22 Q58 22 58 18 L58 14 Q58 11 55 11 L34 11 L34 16 L22 16 Q19 16 19 19 L19 22 L10 22 Q4 22 4 26 Z" fill="url(#gg${i})" stroke="#3a2e10" stroke-width="0.6" />
+        <rect x="53" y="12" width="6" height="4" rx="1" fill="#c2432e" />
       </svg>
-    </div>
-  </div>
+      <div class="gunAmmo">×30</div>
+    `;
+    gunLayer.appendChild(el);
+  });
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script type="module" src="game.js"></script>
+  const feed = [
+    ['GHOST-4', 'VIPER-1'], ['FALCON-3', 'COBRA-4'], ['SPECTRE-6', 'WOLF-2'],
+    ['RAVEN-7', 'HAVOC-5'], ['JACKAL-8', 'REAPER-9'], ['VIPER-1', 'GHOST-4'],
+  ];
+  document.getElementById('feedBox').innerHTML = feed
+    .map(([a, b]) => `<div>${a} <span style="color:#cbb98a;">eliminated</span> ${b} <span style="color:#7fd858;">(+5)</span> / <span style="color:#e2482f;">(−6)</span></div>`)
+    .join('');
+</script>
 </body>
 </html>
