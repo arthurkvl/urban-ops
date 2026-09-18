@@ -305,6 +305,16 @@ function updateBot(bot, dt) {
   if (!bot.alive) return;
   if (now < matchFreezeUntil) return;
 
+  if (bot.stuckEscapeUntil && now < bot.stuckEscapeUntil) {
+    // Wedged in a corner while chasing an unreachable target: break off the
+    // chase and walk toward an arbitrary point until clear, then resume.
+    if (!bot.botMoveTarget || dist(bot.x, bot.z, bot.botMoveTarget.x, bot.botMoveTarget.z) < 2) {
+      bot.botMoveTarget = SPAWN_POINTS[Math.floor(Math.random() * SPAWN_POINTS.length)];
+    }
+    moveBotToward(bot, bot.botMoveTarget.x, bot.botMoveTarget.z, dt);
+    return;
+  }
+
   let target = null;
   let bestD = Infinity;
   for (const other of players.values()) {
@@ -377,6 +387,7 @@ function moveBotToward(bot, tx, tz, dt) {
       bot.stuckTicks = 0;
       bot.sideBias = null;
       bot.botMoveTarget = null;
+      bot.stuckEscapeUntil = Date.now() + 1500;
     }
   }
 }
