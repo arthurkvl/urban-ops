@@ -4,6 +4,7 @@ const EYE_HEIGHT = 1.7;
 const WALK_SPEED = 6.5;
 const SPRINT_SPEED = 10;
 const PLAYER_RADIUS = 0.6;
+const MAX_HP = 150;
 const MAG_SIZE = 30;
 const RELOAD_MS = 1800;
 const WEAPON_RANGE = 75;
@@ -43,6 +44,8 @@ const lobbyTimerEl = document.getElementById('lobbyTimer');
 const lobbyListEl = document.getElementById('lobbyList');
 const lobbyStatusEl = document.getElementById('lobbyStatus');
 const watchingBannerEl = document.getElementById('watchingBanner');
+const freezeOverlayEl = document.getElementById('freezeOverlay');
+const freezeTimerEl = document.getElementById('freezeTimer');
 
 let myId = null;
 let myName = '';
@@ -193,6 +196,30 @@ scene.add(ground);
 const buildingGroup = new THREE.Group();
 scene.add(buildingGroup);
 
+const windowMat = new THREE.MeshStandardMaterial({
+  color: 0x1c2a30, roughness: 0.3, metalness: 0.4, emissive: 0x2a3a42, emissiveIntensity: 0.15,
+});
+
+function addWindows(b) {
+  const rows = b.h > 5 ? 2 : 1;
+  const cols = Math.max(1, Math.floor(b.hx / 2));
+  const winW = 0.7, winH = 0.9;
+  for (let row = 0; row < rows; row++) {
+    const wy = 1.4 + row * 2.1;
+    if (wy > b.h - 0.6) continue;
+    for (let col = 0; col < cols; col++) {
+      const wx = b.x - b.hx + (col + 0.5) * ((b.hx * 2) / cols);
+      const winFront = new THREE.Mesh(new THREE.PlaneGeometry(winW, winH), windowMat);
+      winFront.position.set(wx, wy, b.z + b.hz + 0.02);
+      buildingGroup.add(winFront);
+      const winBack = winFront.clone();
+      winBack.position.z = b.z - b.hz - 0.02;
+      winBack.rotation.y = Math.PI;
+      buildingGroup.add(winBack);
+    }
+  }
+}
+
 function buildMap(list, half) {
   buildingGroup.clear();
   mapHalf = half;
@@ -201,6 +228,7 @@ function buildMap(list, half) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.hx * 2, b.h, b.hz * 2), wallMat);
     mesh.position.set(b.x, b.h / 2, b.z);
     buildingGroup.add(mesh);
+    addWindows(b);
   }
   const boundaryMat = new THREE.MeshStandardMaterial({ color: 0x6a5636 });
   for (let i = 0; i < 4; i++) {
@@ -338,6 +366,76 @@ function groundHeightAt(x, z) {
     if (Math.hypot(x - p.x, z - p.z) <= p.radius) h = Math.max(h, p.height);
   }
   return h;
+}
+
+// ---------- Decorative set-dressing (trees, wrecked car) - purely visual, no collision ----------
+const decorGroup = new THREE.Group();
+scene.add(decorGroup);
+
+const TREE_SPOTS = [
+  { x: -18, z: -15 }, { x: 5, z: -18 }, { x: 24, z: -8 }, { x: -24, z: 8 },
+  { x: 2, z: 12 }, { x: 22, z: 32 }, { x: -8, z: 28 }, { x: 38, z: 10 },
+  { x: -35, z: -15 }, { x: 10, z: -35 }, { x: -2, z: -6 }, { x: 28, z: 14 },
+];
+const WRECK_SPOT = { x: -6, z: -14, rot: 0.4 };
+
+const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3420, roughness: 0.9 });
+const foliageMat = new THREE.MeshStandardMaterial({ color: 0x5a6b34, roughness: 0.85 });
+
+function makeTree(scale = 1) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * scale, 0.2 * scale, 2.2 * scale, 6), trunkMat);
+  trunk.position.y = 1.1 * scale;
+  g.add(trunk);
+  const foliage = new THREE.Mesh(new THREE.IcosahedronGeometry(1.15 * scale, 0), foliageMat);
+  foliage.position.y = 2.5 * scale;
+  foliage.scale.y = 1.15;
+  g.add(foliage);
+  const foliage2 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75 * scale, 0), foliageMat);
+  foliage2.position.set(0.5 * scale, 2.1 * scale, 0.3 * scale);
+  g.add(foliage2);
+  return g;
+}
+
+const wreckBodyMat = new THREE.MeshStandardMaterial({ color: 0x5a1f16, roughness: 0.85, metalness: 0.2 });
+const wreckDarkMat = new THREE.MeshStandardMaterial({ color: 0x1a1512, roughness: 0.9 });
+const wreckGlassMat = new THREE.MeshStandardMaterial({ color: 0x0a1a1c, roughness: 0.4, metalness: 0.3 });
+
+function makeWreckedCar() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(4.2, 1.1, 1.8), wreckBodyMat);
+  body.position.y = 0.65;
+  g.add(body);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 1.6), wreckGlassMat);
+  cabin.position.set(-0.2, 1.35, 0);
+  cabin.rotation.z = 0.05;
+  g.add(cabin);
+  const scorch = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.3, 1.9), wreckDarkMat);
+  scorch.position.set(0.6, 1.05, 0);
+  g.add(scorch);
+  const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 10);
+  const wheelPositions = [[-1.5, 0.4, 0.9], [1.4, 0.4, 0.9], [-1.5, 0.4, -0.9]];
+  for (const [x, y, z] of wheelPositions) {
+    const wheel = new THREE.Mesh(wheelGeo, wreckDarkMat);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(x, y, z);
+    g.add(wheel);
+  }
+  g.rotation.z = 0.12;
+  return g;
+}
+
+function buildDecor() {
+  decorGroup.clear();
+  TREE_SPOTS.forEach((s, i) => {
+    const tree = makeTree(0.9 + (i % 3) * 0.15);
+    tree.position.set(s.x, 0, s.z);
+    decorGroup.add(tree);
+  });
+  const wreck = makeWreckedCar();
+  wreck.position.set(WRECK_SPOT.x, 0, WRECK_SPOT.z);
+  wreck.rotation.y = WRECK_SPOT.rot;
+  decorGroup.add(wreck);
 }
 
 // ---------- Player avatars (original low-poly "operative" figure) ----------
@@ -593,6 +691,7 @@ let pos = { x: 0, z: 0 };
 let pointerLocked = false;
 let alive = true;
 let spectateId = null;
+let frozen = false;
 
 function aliveOthers() {
   if (!latestState) return [];
@@ -663,7 +762,7 @@ const JUMP_SPEED = 4.2;
 const GRAVITY = 11;
 
 function tryJump() {
-  if (!joined || !alive) return;
+  if (!joined || !alive || frozen) return;
   if (bobY <= 0.001 && vertVelocity === 0) vertVelocity = JUMP_SPEED;
 }
 
@@ -672,7 +771,7 @@ let lastShotAt = 0;
 const FIRE_COOLDOWN_MS = 140;
 
 function fire() {
-  if (!alive || reloading) return;
+  if (!alive || reloading || frozen) return;
   const now = performance.now();
   if (now - lastShotAt < FIRE_COOLDOWN_MS) return;
   if (ammo <= 0) { startReload(); return; }
@@ -796,6 +895,7 @@ socket.on('state', (state) => {
   if (!mapBuilt) {
     buildMap(state.buildings, state.mapHalf);
     buildProps(state.barrels, state.platforms);
+    buildDecor();
     mapBuilt = true;
   }
 
@@ -843,12 +943,21 @@ socket.on('state', (state) => {
     requestLock();
   }
 
+  frozen = (state.freezeTimeLeftMs || 0) > 0;
+  if (frozen) {
+    freezeTimerEl.textContent = Math.ceil(state.freezeTimeLeftMs / 1000);
+    freezeOverlayEl.classList.remove('hidden');
+  } else {
+    freezeOverlayEl.classList.add('hidden');
+  }
+
   if (me) {
     creditsEl.textContent = me.credits;
     killsEl.textContent = me.kills;
     deathsEl.textContent = me.deaths;
-    healthBarEl.style.width = `${me.hp}%`;
-    healthBarEl.style.background = me.hp > 50 ? '#7fb84a' : me.hp > 25 ? '#d6b64a' : '#c73a2f';
+    const hpPct = Math.max(0, Math.min(100, (me.hp / MAX_HP) * 100));
+    healthBarEl.style.width = `${hpPct}%`;
+    healthBarEl.style.background = hpPct > 50 ? '#7fb84a' : hpPct > 25 ? '#d6b64a' : '#c73a2f';
     if (!alive && me.alive) {
       pos.x = me.x;
       pos.z = me.z;
@@ -922,7 +1031,7 @@ function animate() {
     ammoLineEl.textContent = `${ammo} / ${MAG_SIZE}`;
   }
 
-  if (joined && alive) {
+  if (joined && alive && !frozen) {
     const speed = keys.shift ? SPRINT_SPEED : WALK_SPEED;
     const fx = Math.sin(yaw);
     const fz = Math.cos(yaw);

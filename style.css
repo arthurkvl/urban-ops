@@ -46,10 +46,11 @@ html, body {
   background: rgba(14, 12, 8, 0.85);
 }
 .start-box h1 {
-  font-size: 42px;
-  letter-spacing: 4px;
+  font-size: 30px;
+  letter-spacing: 2px;
   margin: 0 0 6px;
   color: #d6b64a;
+  line-height: 1.25;
 }
 .start-box h1 span { color: #c73a2f; }
 .sub { font-size: 12px; color: #9a8a6c; margin-bottom: 16px; }
@@ -160,10 +161,14 @@ html, body {
 }
 #healthBarWrap {
   position: absolute;
-  bottom: 20px; left: 20px;
-  width: 180px; height: 14px;
-  background: rgba(10,8,4,0.7);
-  border: 1px solid #4a3e22;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 360px; height: 28px;
+  background: rgba(10,8,4,0.75);
+  border: 2px solid #4a3e22;
+  border-radius: 4px;
+  overflow: hidden;
 }
 #healthBar { height: 100%; width: 100%; background: #7fb84a; transition: width 0.15s; }
 
@@ -187,16 +192,19 @@ html, body {
 .float-pop {
   position: absolute;
   left: 50%;
-  font-size: 22px;
-  font-weight: bold;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 1px;
   transform: translate(-50%, 0);
-  animation: floatUp 0.9s ease-out forwards;
+  text-shadow: 0 3px 10px rgba(0,0,0,0.75), 0 0 18px currentColor;
+  animation: floatUp 1.1s ease-out forwards;
 }
 .float-pop.kill { color: #a8dc6a; }
 .float-pop.death { color: #e2482f; }
 @keyframes floatUp {
-  from { opacity: 1; transform: translate(-50%, 0); }
-  to { opacity: 0; transform: translate(-50%, -50px); }
+  from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  15% { transform: translate(-50%, -6px) scale(1.15); }
+  to { opacity: 0; transform: translate(-50%, -60px) scale(1); }
 }
 
 #watchingBanner {
@@ -297,6 +305,36 @@ html, body {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+#freezeOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 6, 4, 0.35);
+  pointer-events: none;
+}
+#freezeLabel {
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: #d6b64a;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+}
+#freezeTimer {
+  font-size: 140px;
+  font-weight: 800;
+  color: #f0e8d8;
+  text-shadow: 0 0 40px rgba(214, 182, 74, 0.7), 0 4px 10px rgba(0,0,0,0.85);
+  animation: freezePulse 1s ease-in-out infinite;
+}
+@keyframes freezePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
 .panel {
   position: absolute;
   top: 50%; left: 50%;
@@ -312,7 +350,7 @@ html, body {
 
 #tutorial {
   position: absolute;
-  bottom: 16px;
+  bottom: 74px;
   right: 16px;
   width: 200px;
   opacity: 0.4;

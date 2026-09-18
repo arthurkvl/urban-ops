@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>URBAN OPS</title>
+  <title>CALL OF THE TRENCHES</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="startScreen">
     <div class="start-box">
-      <h1>URBAN<span>OPS</span></h1>
+      <h1>CALL OF THE <span>TRENCHES</span></h1>
       <p class="sub">Tactical FPS — fictional desert town · virtual currency, no real-money stakes.</p>
       <ol class="objective">
         <li>Eliminate enemy operatives to earn <b>+$3</b></li>
@@ -29,7 +29,7 @@
 
   <div id="lobbyScreen" class="hidden">
     <div class="start-box">
-      <h1>URBAN<span>OPS</span></h1>
+      <h1>CALL OF THE <span>TRENCHES</span></h1>
       <p class="sub" id="lobbyStatus">Waiting for players...</p>
       <div id="lobbyCount">0 / 10</div>
       <div id="lobbyTimer"></div>
@@ -110,6 +110,11 @@
     <div id="roundEndSub"></div>
     <div id="roundEndStandings"></div>
     <button id="continueBtn">CONTINUE</button>
+  </div>
+
+  <div id="freezeOverlay" class="hidden">
+    <div id="freezeLabel">GET READY</div>
+    <div id="freezeTimer">3</div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
