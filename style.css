@@ -87,6 +87,10 @@ html, body {
 }
 .controls-hint { margin-top: 18px; font-size: 11px; color: #7a6a54; line-height: 1.6; }
 
+.modeChoice { display: flex; flex-direction: column; gap: 10px; }
+.modeBtn { width: 100%; }
+#deployHumansBtn { background: #c73a2f; color: #f0e8d8; }
+
 #hud { position: fixed; inset: 0; }
 #scene { position: absolute; inset: 0; display: block; }
 

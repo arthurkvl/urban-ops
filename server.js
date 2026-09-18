@@ -178,20 +178,44 @@ function randomSpawn(avoid) {
 }
 
 // ---------- Game state ----------
-const players = new Map(); // name (humans) or bot id -> player, persists across reconnects
-const socketToName = new Map(); // socket.id -> player name, for routing incoming events
-let botCounter = 0;
-let killFeed = [];
-let matchStartAt = Date.now();
+// Two independent matchmaking rooms so a "bots" match and a "real people"
+// match never mix players, timers, or rounds.
 const MATCH_DURATION_MS = 5 * 60 * 1000;
 
-function pushLog(text) {
-  killFeed.unshift({ text, ts: Date.now() });
-  killFeed = killFeed.slice(0, 8);
+const ROOM_CONFIGS = {
+  bots: { id: 'bots', lobbyWaitMs: 20000 },
+  humans: { id: 'humans', lobbyWaitMs: 2 * 60 * 1000 },
+};
+
+function createRoom(config) {
+  return {
+    id: config.id,
+    lobbyWaitMs: config.lobbyWaitMs,
+    players: new Map(), // name (humans) or bot id -> player, persists across reconnects
+    botCounter: 0,
+    killFeed: [],
+    matchStartAt: Date.now(),
+    matchFreezeUntil: 0,
+    phase: 'lobby',
+    lobbyDeadline: Date.now() + config.lobbyWaitMs,
+    roundEndCooldownUntil: 0,
+  };
 }
 
-function makePlayer(id, name, isBot) {
-  const spawn = randomSpawn([...players.values()]);
+const rooms = {
+  bots: createRoom(ROOM_CONFIGS.bots),
+  humans: createRoom(ROOM_CONFIGS.humans),
+};
+
+const socketToPlayer = new Map(); // socket.id -> { roomId, name }, for routing incoming events
+
+function pushLog(room, text) {
+  room.killFeed.unshift({ text, ts: Date.now() });
+  room.killFeed = room.killFeed.slice(0, 8);
+}
+
+function makePlayer(room, id, name, isBot) {
+  const spawn = randomSpawn([...room.players.values()]);
   return {
     id,
     name,
@@ -214,29 +238,29 @@ function makePlayer(id, name, isBot) {
   };
 }
 
-function spawnBots(count) {
+function spawnBots(room, count) {
   for (let i = 0; i < count; i++) {
-    botCounter++;
-    const name = `${CALLSIGNS[botCounter % CALLSIGNS.length]}-${botCounter}`;
-    const id = `bot_${botCounter}`;
-    players.set(id, makePlayer(id, name, true));
+    room.botCounter++;
+    const name = `${CALLSIGNS[room.botCounter % CALLSIGNS.length]}-${room.botCounter}`;
+    const id = `bot_${room.id}_${room.botCounter}`;
+    room.players.set(id, makePlayer(room, id, name, true));
   }
 }
 
-function clearBots() {
-  for (const [key, p] of players) {
-    if (p.isBot) players.delete(key);
+function clearBots(room) {
+  for (const [key, p] of room.players) {
+    if (p.isBot) room.players.delete(key);
   }
 }
 
-function getOrCreatePlayer(name) {
-  if (players.has(name)) return players.get(name);
-  const p = makePlayer(name, name, false);
-  players.set(name, p);
+function getOrCreatePlayer(room, name) {
+  if (room.players.has(name)) return room.players.get(name);
+  const p = makePlayer(room, name, name, false);
+  room.players.set(name, p);
   return p;
 }
 
-function applyHit(shooter, target) {
+function applyHit(room, shooter, target) {
   if (target.protectedUntil && Date.now() < target.protectedUntil) return false;
   target.hp -= RIFLE_DAMAGE;
   io.to(target.socketId || '').emit('hit_taken', { hp: Math.max(0, target.hp) });
@@ -248,7 +272,7 @@ function applyHit(shooter, target) {
     target.credits = Math.round((target.credits - DEATH_PENALTY) * 100) / 100;
     shooter.kills += 1;
     shooter.credits = Math.round((shooter.credits + KILL_REWARD) * 100) / 100;
-    pushLog(`${shooter.name} eliminated ${target.name} (+$${KILL_REWARD} / -$${DEATH_PENALTY})`);
+    pushLog(room, `${shooter.name} eliminated ${target.name} (+$${KILL_REWARD} / -$${DEATH_PENALTY})`);
     io.to(shooter.socketId || '').emit('feedback', { type: 'kill', amount: KILL_REWARD });
     io.to(target.socketId || '').emit('feedback', { type: 'death', amount: -DEATH_PENALTY, killerId: shooter.id, killerName: shooter.name });
     return true;
@@ -256,20 +280,16 @@ function applyHit(shooter, target) {
   return false;
 }
 
-let phase = 'lobby';
-let lobbyDeadline = Date.now() + LOBBY_WAIT_MS;
-let matchFreezeUntil = 0;
-
-function startMatch() {
-  clearBots();
-  const humanCount = [...players.values()].filter((p) => p.connected && !p.isBot).length;
-  spawnBots(Math.max(0, MAX_PLAYERS - humanCount));
+function startMatch(room) {
+  clearBots(room);
+  const humanCount = [...room.players.values()].filter((p) => p.connected && !p.isBot).length;
+  spawnBots(room, Math.max(0, MAX_PLAYERS - humanCount));
 
   // Assign spawns one at a time, each picked as far as possible from every
   // spawn already handed out this round — prevents several entities from
   // landing on (or right next to) the same point, which used to let a pack
   // of bots gun someone down the instant their spawn protection expired.
-  const roster = [...players.values()].sort(() => Math.random() - 0.5);
+  const roster = [...room.players.values()].sort(() => Math.random() - 0.5);
   const takenSpawns = [];
   for (const p of roster) {
     const spawn = randomSpawn(takenSpawns);
@@ -283,27 +303,27 @@ function startMatch() {
     p.z = spawn.z;
     p.protectedUntil = Date.now() + SPAWN_PROTECTION_MS;
   }
-  matchStartAt = Date.now();
-  matchFreezeUntil = matchStartAt + FREEZE_MS;
-  phase = 'active';
-  pushLog('Round starting — good hunting.');
+  room.matchStartAt = Date.now();
+  room.matchFreezeUntil = room.matchStartAt + FREEZE_MS;
+  room.phase = 'active';
+  pushLog(room, 'Round starting — good hunting.');
 }
 
-function endRound() {
-  clearBots();
-  for (const p of players.values()) {
+function endRound(room) {
+  clearBots(room);
+  for (const p of room.players.values()) {
     p.alive = false;
     p.roundParticipant = false;
   }
-  phase = 'lobby';
-  lobbyDeadline = Date.now() + LOBBY_WAIT_MS;
+  room.phase = 'lobby';
+  room.lobbyDeadline = Date.now() + room.lobbyWaitMs;
 }
 
 // ---------- Bot AI ----------
-function updateBot(bot, dt) {
+function updateBot(room, bot, dt) {
   const now = Date.now();
   if (!bot.alive) return;
-  if (now < matchFreezeUntil) return;
+  if (now < room.matchFreezeUntil) return;
 
   if (bot.stuckEscapeUntil && now < bot.stuckEscapeUntil) {
     // Wedged in a corner while chasing an unreachable target: break off the
@@ -317,7 +337,7 @@ function updateBot(bot, dt) {
 
   let target = null;
   let bestD = Infinity;
-  for (const other of players.values()) {
+  for (const other of room.players.values()) {
     if (other.id === bot.id || !other.alive) continue;
     if (other.protectedUntil && now < other.protectedUntil) continue;
     const d = dist(bot.x, bot.z, other.x, other.z);
@@ -335,14 +355,14 @@ function updateBot(bot, dt) {
       bot.lastShotAt = now;
       const isHit = Math.random() < BOT_HIT_CHANCE;
       const missOffset = isHit ? 0 : 1.4;
-      io.emit('tracer', {
+      io.to(room.id).emit('tracer', {
         shooterId: bot.id,
         fromX: bot.x,
         fromZ: bot.z,
         toX: target.x + (Math.random() - 0.5) * missOffset,
         toZ: target.z + (Math.random() - 0.5) * missOffset,
       });
-      if (isHit) applyHit(bot, target);
+      if (isHit) applyHit(room, bot, target);
     }
     if (bestD > BOT_ENGAGE_RANGE * 0.5) {
       moveBotToward(bot, target.x, target.z, dt);
@@ -393,29 +413,27 @@ function moveBotToward(bot, tx, tz, dt) {
 }
 
 // ---------- Main tick ----------
-let roundEndCooldownUntil = 0;
-
-function tick() {
+function tick(room) {
   const now = Date.now();
   const dt = TICK_MS / 1000;
 
-  if (phase === 'lobby') {
-    const humanCount = [...players.values()].filter((p) => p.connected && !p.isBot).length;
-    if (humanCount >= MAX_PLAYERS || now >= lobbyDeadline) {
-      startMatch();
+  if (room.phase === 'lobby') {
+    const humanCount = [...room.players.values()].filter((p) => p.connected && !p.isBot).length;
+    if (humanCount >= MAX_PLAYERS || now >= room.lobbyDeadline) {
+      startMatch(room);
     }
-    broadcastState();
+    broadcastState(room);
     return;
   }
 
-  for (const p of players.values()) {
-    if (p.isBot) updateBot(p, dt);
+  for (const p of room.players.values()) {
+    if (p.isBot) updateBot(room, p, dt);
   }
 
-  const roster = [...players.values()].filter((p) => p.connected || p.isBot);
+  const roster = [...room.players.values()].filter((p) => p.connected || p.isBot);
   const aliveCount = roster.filter((p) => p.alive).length;
-  const timedOut = now - matchStartAt > MATCH_DURATION_MS;
-  const lastStanding = roster.length > 1 && aliveCount <= 1 && now > roundEndCooldownUntil;
+  const timedOut = now - room.matchStartAt > MATCH_DURATION_MS;
+  const lastStanding = roster.length > 1 && aliveCount <= 1 && now > room.roundEndCooldownUntil;
 
   if (timedOut || lastStanding) {
     const standings = [...roster].sort((a, b) => b.credits - a.credits);
@@ -428,23 +446,23 @@ function tick() {
       winnerName = survivor.name;
       winnerBonus = SURVIVOR_BONUS;
       reason = 'last_standing';
-      pushLog(`ROUND OVER — ${survivor.name} is the last one standing (+$${SURVIVOR_BONUS}).`);
+      pushLog(room, `ROUND OVER — ${survivor.name} is the last one standing (+$${SURVIVOR_BONUS}).`);
     } else {
       winnerName = standings[0] ? standings[0].name : null;
       reason = 'timeout';
-      pushLog(`ROUND OVER — top operative: ${winnerName || 'none'}.`);
+      pushLog(room, `ROUND OVER — top operative: ${winnerName || 'none'}.`);
     }
-    io.emit('round_end', {
+    io.to(room.id).emit('round_end', {
       reason,
       winnerName,
       winnerBonus,
       standings: standings.slice(0, 6).map((p) => ({ name: p.name, credits: p.credits })),
     });
-    endRound();
-    roundEndCooldownUntil = now + 4000;
+    endRound(room);
+    room.roundEndCooldownUntil = now + 4000;
   }
 
-  broadcastState();
+  broadcastState(room);
 }
 
 function serializePlayer(p) {
@@ -467,43 +485,47 @@ function serializePlayer(p) {
   };
 }
 
-function broadcastState() {
-  const visible = [...players.values()].filter((p) => p.connected || p.isBot);
-  const humanCount = [...players.values()].filter((p) => p.connected && !p.isBot).length;
+function broadcastState(room) {
+  const visible = [...room.players.values()].filter((p) => p.connected || p.isBot);
+  const humanCount = [...room.players.values()].filter((p) => p.connected && !p.isBot).length;
   const payload = {
-    phase,
+    roomId: room.id,
+    phase: room.phase,
     humanCount,
     maxPlayers: MAX_PLAYERS,
-    lobbyTimeLeftMs: phase === 'lobby' ? Math.max(0, lobbyDeadline - Date.now()) : 0,
-    freezeTimeLeftMs: phase === 'active' ? Math.max(0, matchFreezeUntil - Date.now()) : 0,
+    lobbyTimeLeftMs: room.phase === 'lobby' ? Math.max(0, room.lobbyDeadline - Date.now()) : 0,
+    freezeTimeLeftMs: room.phase === 'active' ? Math.max(0, room.matchFreezeUntil - Date.now()) : 0,
     players: visible.map(serializePlayer),
-    killFeed,
-    matchTimeLeftMs: Math.max(0, MATCH_DURATION_MS - (Date.now() - matchStartAt)),
+    killFeed: room.killFeed,
+    matchTimeLeftMs: Math.max(0, MATCH_DURATION_MS - (Date.now() - room.matchStartAt)),
     buildings: BUILDINGS,
     barrels: BARRELS,
     platforms: PLATFORMS,
     mapHalf: MAP_HALF,
   };
-  io.emit('state', payload);
+  io.to(room.id).emit('state', payload);
 }
 
 // ---------- Sockets ----------
 io.on('connection', (socket) => {
-  socket.on('join', (name) => {
+  socket.on('join', ({ name, roomId } = {}) => {
+    const room = rooms[roomId] || rooms.bots;
     const cleanName = (name || 'OPERATIVE').trim().slice(0, 18) || 'OPERATIVE';
-    const p = getOrCreatePlayer(cleanName);
+    const p = getOrCreatePlayer(room, cleanName);
     p.connected = true;
     p.socketId = socket.id;
-    socketToName.set(socket.id, cleanName);
-    socket.emit('joined', { id: p.id, name: cleanName, x: p.x, z: p.z });
+    socket.join(room.id);
+    socketToPlayer.set(socket.id, { roomId: room.id, name: cleanName });
+    socket.emit('joined', { id: p.id, name: cleanName, x: p.x, z: p.z, roomId: room.id });
   });
 
   socket.on('move', ({ x, z, yaw, pitch }) => {
-    const name = socketToName.get(socket.id);
-    if (!name) return;
-    const p = players.get(name);
+    const info = socketToPlayer.get(socket.id);
+    if (!info) return;
+    const room = rooms[info.roomId];
+    const p = room.players.get(info.name);
     if (!p || !p.alive) return;
-    if (Date.now() >= matchFreezeUntil && Number.isFinite(x) && Number.isFinite(z)) {
+    if (Date.now() >= room.matchFreezeUntil && Number.isFinite(x) && Number.isFinite(z)) {
       const resolved = resolveCollisions(x, z, PLAYER_RADIUS);
       p.x = resolved.x;
       p.z = resolved.z;
@@ -513,16 +535,17 @@ io.on('connection', (socket) => {
   });
 
   socket.on('shoot', ({ targetId, toX, toZ }) => {
-    const name = socketToName.get(socket.id);
-    if (!name) return;
-    const p = players.get(name);
+    const info = socketToPlayer.get(socket.id);
+    if (!info) return;
+    const room = rooms[info.roomId];
+    const p = room.players.get(info.name);
     if (!p || !p.alive) return;
-    if (Date.now() < matchFreezeUntil) return;
+    if (Date.now() < room.matchFreezeUntil) return;
     const now = Date.now();
     if (now - p.lastShotAt < FIRE_RATE_MS) return;
     p.lastShotAt = now;
 
-    io.emit('tracer', {
+    io.to(room.id).emit('tracer', {
       shooterId: p.id,
       fromX: p.x,
       fromZ: p.z,
@@ -531,24 +554,27 @@ io.on('connection', (socket) => {
     });
 
     if (!targetId) return;
-    const target = players.get(targetId);
+    const target = room.players.get(targetId);
     if (!target || !target.alive) return;
     if (dist(p.x, p.z, target.x, target.z) > WEAPON_RANGE * 1.3) return;
     if (!hasLineOfSight(p.x, p.z, target.x, target.z)) return;
-    applyHit(p, target);
+    applyHit(room, p, target);
   });
 
   socket.on('disconnect', () => {
-    const name = socketToName.get(socket.id);
-    if (name) {
-      const p = players.get(name);
+    const info = socketToPlayer.get(socket.id);
+    if (info) {
+      const room = rooms[info.roomId];
+      const p = room.players.get(info.name);
       if (p) p.connected = false;
     }
-    socketToName.delete(socket.id);
+    socketToPlayer.delete(socket.id);
   });
 });
 
-setInterval(tick, TICK_MS);
+setInterval(() => {
+  for (const room of Object.values(rooms)) tick(room);
+}, TICK_MS);
 
 const PORT = process.env.PORT || 3130;
 httpServer.listen(PORT, () => {

@@ -14,7 +14,8 @@ const socket = io();
 // ---------- DOM ----------
 const startScreen = document.getElementById('startScreen');
 const nameInput = document.getElementById('nameInput');
-const deployBtn = document.getElementById('deployBtn');
+const deployBotsBtn = document.getElementById('deployBotsBtn');
+const deployHumansBtn = document.getElementById('deployHumansBtn');
 const hud = document.getElementById('hud');
 const canvas = document.getElementById('scene');
 const hitmarker = document.getElementById('hitmarker');
@@ -801,15 +802,21 @@ function fire() {
 
 // ---------- Join flow ----------
 let hasJoinedBefore = false;
-deployBtn.addEventListener('click', () => {
+let myRoomId = 'bots';
+
+function deploy(roomId) {
   const name = nameInput.value.trim() || `OPERATIVE-${Math.floor(Math.random() * 900 + 100)}`;
   myName = name;
+  myRoomId = roomId;
   hasJoinedBefore = true;
-  socket.emit('join', name);
-});
+  socket.emit('join', { name, roomId });
+}
+
+deployBotsBtn.addEventListener('click', () => deploy('bots'));
+deployHumansBtn.addEventListener('click', () => deploy('humans'));
 
 socket.on('connect', () => {
-  if (hasJoinedBefore) socket.emit('join', myName);
+  if (hasJoinedBefore) socket.emit('join', { name: myName, roomId: myRoomId });
 });
 
 socket.on('disconnect', () => {
