@@ -416,9 +416,22 @@ function moveBotToward(bot, tx, tz, dt) {
 function tick(room) {
   const now = Date.now();
   const dt = TICK_MS / 1000;
+  const humanCount = [...room.players.values()].filter((p) => p.connected && !p.isBot).length;
+
+  if (humanCount === 0) {
+    // Nobody's here to see it: don't run bot-only matches in the background.
+    // Stay idle so the next person to join always gets a full, fresh wait
+    // instead of landing mid-round or with only seconds left on the clock.
+    if (room.phase !== 'lobby') {
+      endRound(room);
+    } else {
+      room.lobbyDeadline = now + room.lobbyWaitMs;
+    }
+    broadcastState(room);
+    return;
+  }
 
   if (room.phase === 'lobby') {
-    const humanCount = [...room.players.values()].filter((p) => p.connected && !p.isBot).length;
     if (humanCount >= MAX_PLAYERS || now >= room.lobbyDeadline) {
       startMatch(room);
     }
