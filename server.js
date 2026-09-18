@@ -17,7 +17,7 @@ app.get('/play', (req, res) => {
 });
 
 // ============================================================
-// URBAN OPS - original tactical FPS prototype.
+// CALL OF THE TRENCHES - original tactical FPS prototype.
 // Fictional generic desert town, no real place or faction.
 // All currency is virtual ("$" is flavor text only, no real
 // money, no stakes, no pooled entry fees).
@@ -28,13 +28,14 @@ const TICK_MS = 1000 / TICK_RATE;
 const MAP_HALF = 45;
 const PLAYER_RADIUS = 0.6;
 
-const MAX_HP = 100;
+const MAX_HP = 150;
 const RIFLE_DAMAGE = 28;
 const FIRE_RATE_MS = 140;
 const WEAPON_RANGE = 75;
 const KILL_REWARD = 3;
 const DEATH_PENALTY = 4;
-const SPAWN_PROTECTION_MS = 3000;
+const SPAWN_PROTECTION_MS = 4000;
+const FREEZE_MS = 3000;
 const SURVIVOR_BONUS = 10;
 
 const BOT_SPEED = 5.2;
@@ -43,7 +44,7 @@ const BOT_HIT_CHANCE = 0.5;
 const BOT_ENGAGE_RANGE = 38;
 
 const MAX_PLAYERS = 10;
-const LOBBY_WAIT_MS = 30000;
+const LOBBY_WAIT_MS = 20000;
 
 const CALLSIGNS = ['GHOST', 'VIPER', 'WOLF', 'FALCON', 'COBRA', 'HAVOC', 'SPECTRE', 'RAVEN', 'JACKAL', 'REAPER'];
 
@@ -257,6 +258,7 @@ function applyHit(shooter, target) {
 
 let phase = 'lobby';
 let lobbyDeadline = Date.now() + LOBBY_WAIT_MS;
+let matchFreezeUntil = 0;
 
 function startMatch() {
   clearBots();
@@ -282,6 +284,7 @@ function startMatch() {
     p.protectedUntil = Date.now() + SPAWN_PROTECTION_MS;
   }
   matchStartAt = Date.now();
+  matchFreezeUntil = matchStartAt + FREEZE_MS;
   phase = 'active';
   pushLog('Round starting — good hunting.');
 }
@@ -300,11 +303,13 @@ function endRound() {
 function updateBot(bot, dt) {
   const now = Date.now();
   if (!bot.alive) return;
+  if (now < matchFreezeUntil) return;
 
   let target = null;
   let bestD = Infinity;
   for (const other of players.values()) {
     if (other.id === bot.id || !other.alive) continue;
+    if (other.protectedUntil && now < other.protectedUntil) continue;
     const d = dist(bot.x, bot.z, other.x, other.z);
     if (d < bestD) {
       bestD = d;
@@ -459,6 +464,7 @@ function broadcastState() {
     humanCount,
     maxPlayers: MAX_PLAYERS,
     lobbyTimeLeftMs: phase === 'lobby' ? Math.max(0, lobbyDeadline - Date.now()) : 0,
+    freezeTimeLeftMs: phase === 'active' ? Math.max(0, matchFreezeUntil - Date.now()) : 0,
     players: visible.map(serializePlayer),
     killFeed,
     matchTimeLeftMs: Math.max(0, MATCH_DURATION_MS - (Date.now() - matchStartAt)),
@@ -486,7 +492,7 @@ io.on('connection', (socket) => {
     if (!name) return;
     const p = players.get(name);
     if (!p || !p.alive) return;
-    if (Number.isFinite(x) && Number.isFinite(z)) {
+    if (Date.now() >= matchFreezeUntil && Number.isFinite(x) && Number.isFinite(z)) {
       const resolved = resolveCollisions(x, z, PLAYER_RADIUS);
       p.x = resolved.x;
       p.z = resolved.z;
@@ -500,6 +506,7 @@ io.on('connection', (socket) => {
     if (!name) return;
     const p = players.get(name);
     if (!p || !p.alive) return;
+    if (Date.now() < matchFreezeUntil) return;
     const now = Date.now();
     if (now - p.lastShotAt < FIRE_RATE_MS) return;
     p.lastShotAt = now;
@@ -534,5 +541,5 @@ setInterval(tick, TICK_MS);
 
 const PORT = process.env.PORT || 3130;
 httpServer.listen(PORT, () => {
-  console.log(`Urban Ops running on http://localhost:${PORT}`);
+  console.log(`Call of the Trenches running on http://localhost:${PORT}`);
 });
