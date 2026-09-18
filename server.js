@@ -10,6 +10,12 @@ const io = new Server(httpServer);
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
+app.get('/play', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'play.html'), (err) => {
+    if (err) res.sendFile(path.join(__dirname, 'play.html'));
+  });
+});
+
 // ============================================================
 // URBAN OPS - original tactical FPS prototype.
 // Fictional generic desert town, no real place or faction.
